@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Palette</title>
+    <link rel="stylesheet" href="main.css">
+    
+</head>
+<body>
+
+    <div class="form-container">
+        <h3>Create new color</h3>
+        
+        <div class="form-group">
+            <label for="colorName">Color:</label>
+            <span id="nameError" class="error-message"></span>
+            <input type="text" id="colorName" placeholder="Enter color name">
+        </div>
+
+        <div class="form-group">
+            <label for="colorType">Type:</label>
+            <select id="colorType">
+                <option value="RGB">RGB</option>
+                <option value="RGBA">RGBA</option>
+                <option value="HEX">HEX</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="colorCode">Code:</label>
+            <span id="codeError" class="error-message"></span>
+            <input type="text" id="colorCode" placeholder="Enter color code">
+        </div>
+
+        <button onclick="saveColor()">Save</button>
+    </div>
+
+    <h3>All colors</h3>
+    <div id="palette" class="palette-container">
+        </div>
+
+<script>
+    
+    const defaultColors = [
+        { name: "YELLOWGREEN", type: "RGB", code: "154, 205, 50" },
+        { name: "DARKCYAN", type: "RGBA", code: "0, 139, 139, 1" },
+        { name: "ORANGERED", type: "HEX", code: "#FF4500" }
+    ];
+
+    let colors = [];
+
+    
+
+    function setCookie(name, value, hours) {
+        let expires = "";
+        if (hours) {
+            const date = new Date();
+            date.setTime(date.getTime() + (hours * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (encodeURIComponent(value) || "")  + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for(let i=0;i < ca.length;i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1,c.length);
+                if (c.indexOf(nameEQ) === 0)
+                    return decodeURIComponent(c.substring(nameEQ.length,c.length));
+        }
+        return null;
+    }
+
+    
+
+    function init() {
+        const storedColors = getCookie("myColors");
+        if (storedColors) {
+            try {
+                colors = JSON.parse(storedColors);
+            }
+            catch(e) {
+                console.error("Помилка парсингу cookie", e);
+                colors = defaultColors;
+            }
+        }
+        else {
+            colors = [...defaultColors]; 
+        }
+        renderColors();
+    }
+
+    
+
+    function renderColors() {
+        const palette = document.getElementById('palette');
+        palette.innerHTML = ''; 
+
+        colors.forEach(color => {
+            const card = document.createElement('div');
+            card.className = 'color-card';
+            
+            
+            let bgStyle = '';
+            if (color.type === 'HEX') {
+                bgStyle = color.code;
+            } 
+            else if (color.type === 'RGB') {
+                bgStyle = `rgb(${color.code})`;
+            } 
+            else if (color.type === 'RGBA') {
+                bgStyle = `rgba(${color.code})`;
+            }
+            card.style.backgroundColor = bgStyle;
+
+            card.innerHTML = `
+                <div class="color-info">
+                    <div class="color-name">${color.name}</div>
+                    <div class="color-type">${color.type}</div>
+                    <div class="color-code">${color.code}</div>
+                </div>
+            `;
+            palette.appendChild(card);
+        });
+    }
+
+    
+
+    function saveColor() {
+        const nameInput = document.getElementById('colorName');
+        const typeInput = document.getElementById('colorType');
+        const codeInput = document.getElementById('colorCode');
+        
+        const nameError = document.getElementById('nameError');
+        const codeError = document.getElementById('codeError');
+
+        
+        nameError.textContent = '';
+        codeError.textContent = '';
+
+        const name = nameInput.value.trim();
+        const type = typeInput.value;
+        const code = codeInput.value.trim();
+        
+        let isValid = true;
+
+        
+        if (!name) {
+            nameError.textContent = "Field is required";
+            isValid = false;
+        } 
+        else if (!/^[a-zA-Z\s-]+$/.test(name)) { 
+             nameError.textContent = "Color can only contain letters";
+             isValid = false;
+        } 
+        else {
+            
+            const isDuplicate = colors.some(c => c.name.toLowerCase() === name.toLowerCase());
+            if (isDuplicate) {
+                nameError.textContent = "Name must be unique";
+                isValid = false;
+            }
+        }
+
+       
+        if (type === 'RGB') {
+           
+            const rgbPattern = /^(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})$/;
+            const match = code.match(rgbPattern);
+            if (!match) {
+                 codeError.textContent = "RGB code must match the pattern [0-255], [0-255], [0-255]";
+                 isValid = false;
+            } 
+            else {
+                
+                const [_, r, g, b] = match;
+                if (r > 255 || g > 255 || b > 255) {
+                    codeError.textContent = "Numbers must be between 0 and 255";
+                    isValid = false;
+                }
+            }
+        }
+        else if (type === 'RGBA') {
+        
+            const rgbaPattern = /^(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(0|1|0?\.\d+)$/;
+            const match = code.match(rgbaPattern);
+            if (!match) {
+                codeError.textContent = "RGBA code: [0-255], [0-255], [0-255], [0-1]";
+                isValid = false;
+            } 
+            else {
+                const [_, r, g, b, a] = match;
+                if (r > 255 || g > 255 || b > 255) {
+                    codeError.textContent = "RGB part must be between 0 and 255";
+                    isValid = false;
+                }
+               
+                if (parseFloat(a) < 0 || parseFloat(a) > 1) {
+                    codeError.textContent = "Alpha must be between 0 and 1";
+                    isValid = false;
+                }
+            }
+        } 
+        else if (type === 'HEX') {
+            
+            const hexPattern = /^#[0-9A-Fa-f]{6}$/;
+            if (!hexPattern.test(code)) {
+                codeError.textContent = "HEX code must match pattern #XXXXXX";
+                isValid = false;
+            }
+        }
+
+        if (isValid) {
+            
+            const newColor = {
+                name: name.toUpperCase(), 
+                type: type,
+                code: code
+            };
+            
+            colors.push(newColor);
+            
+            
+            setCookie("myColors", JSON.stringify(colors), 3);
+            
+            
+            renderColors();
+            
+            
+            nameInput.value = '';
+            codeInput.value = '';
+            typeInput.value = 'RGB';
+        }
+    }
+
+   
+    
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
